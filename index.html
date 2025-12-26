@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3DoF + Qadam Navigatsiya</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background: black; }
+        
+        /* Orqa fon kamera */
+        #bg-video {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: -1;
+        }
+
+        /* UI */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center;
+        }
+
+        /* Strelka (Ekran markazida turadi) */
+        #arrow {
+            width: 150px; height: 150px;
+            filter: drop-shadow(0 0 10px #00ff00);
+            transition: transform 0.5s ease;
+        }
+
+        #distance-box {
+            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px;
+            margin-top: 20px; font-size: 24px; font-weight: bold; border: 2px solid lime;
+        }
+
+        #instruction {
+            position: fixed; top: 20px; width: 80%; background: rgba(0,0,0,0.5);
+            padding: 10px; border-radius: 10px; color: yellow;
+        }
+
+        button {
+            padding: 15px 40px; font-size: 18px; background: #007bff; color: white;
+            border: none; border-radius: 30px; margin-top: 50px;
+            box-shadow: 0 0 20px blue;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="bg-video" autoplay playsinline muted></video>
+
+    <div id="ui-layer">
+        <div id="instruction">Telefonni tik ushlang va yuring</div>
+        
+        <img id="arrow" src="https://upload.wikimedia.org/wikipedia/commons/7/71/Arrow_icon.svg" style="filter: invert(1) sepia(1) saturate(5) hue-rotate(90deg);">
+        
+        <div id="distance-box">
+            <span id="meters">20.0</span> metr
+        </div>
+
+        <button id="start-btn" onclick="startApp()">BOSHLASH</button>
+    </div>
+
+    <script>
+        let distance = 20.0; // 20 metr masofa
+        let stepCount = 0;
+        let lastAccY = 0;
+        let isWalking = false;
+        let currentLeg = 1; // 1-etap (to'g'riga), 2-etap (o'ngga)
+
+        async function startApp() {
+            document.getElementById('start-btn').style.display = 'none';
+
+            // 1. Kamerani yoqish
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                document.getElementById('bg-video').srcObject = stream;
+            } catch (e) { alert("Kamera xatosi!"); }
+
+            // 2. Sensorlarga ruxsat (iOS 13+)
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().then(response => {
+                    if (response == 'granted') {
+                        window.addEventListener('devicemotion', handleMotion);
+                        // window.addEventListener('deviceorientation', handleOrientation); // Kompas kerak bo'lsa
+                    }
+                });
+            } else {
+                window.addEventListener('devicemotion', handleMotion);
+            }
+            
+            isWalking = true;
+        }
+
+        function handleMotion(event) {
+            if (!isWalking) return;
+
+            // Qadamni aniqlash logikasi (Oddiy akselerometr tebranishi)
+            // Telefon cho'ntakda yoki qo'lda silkinganda Y o'qi o'zgaradi
+            let acc = event.accelerationIncludingGravity;
+            let accY = acc.y; // Tik turganda Y o'qi o'zgarishi
+
+            // Silkinish kuchi (Threshold)
+            if (Math.abs(accY - lastAccY) > 2) { 
+                registerStep();
+            }
+            lastAccY = accY;
+        }
+
+        // Qadamni hisoblash (Debounce - bitta silkinishni ko'p marta sanamasligi uchun)
+        let lastStepTime = 0;
+        function registerStep() {
+            let now = Date.now();
+            if (now - lastStepTime > 500) { // Har yarim sekundda maksimum 1 qadam
+                lastStepTime = now;
+                
+                // Odam o'rtacha 0.7 metr yuradi
+                distance -= 0.7; 
+                
+                if (distance < 0) distance = 0;
+                
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            // Metrni yangilash
+            document.getElementById('meters').innerText = distance.toFixed(1);
+
+            // LOGIKA: 20 metr tugasa nima bo'ladi?
+            if (distance <= 0 && currentLeg === 1) {
+                // 1-etap tugadi, 2-etapga o'tamiz
+                currentLeg = 2;
+                distance = 15.0; // Keyingi koridor 15 metr
+                
+                // STRELKANI BURISH
+                document.getElementById('arrow').style.transform = "rotate(90deg)"; // O'ngga burildi
+                document.getElementById('instruction').innerText = "O'NGGA BURILING ->";
+                document.getElementById('instruction').style.background = "red";
+                
+                // Ovozli xabar (ixtiyoriy)
+                // navigator.vibrate(200); 
+            }
+            else if (distance <= 0 && currentLeg === 2) {
+                isWalking = false;
+                document.getElementById('instruction').innerText = "MANZILGA YETDINGIZ! 🏁";
+                document.getElementById('arrow').style.display = 'none';
+                document.getElementById('distance-box').style.background = "green";
+                document.getElementById('meters').innerText = "0";
+            }
+        }
+    </script>
+</body>
+</html>
