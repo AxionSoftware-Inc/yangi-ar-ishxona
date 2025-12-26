@@ -1,153 +1,112 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3DoF + Qadam Navigatsiya</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Strelkalar Yo'lagi</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: black; }
-        
-        /* Orqa fon kamera */
-        #bg-video {
+        body { margin: 0; overflow: hidden; }
+        #scanner-ui {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; z-index: -1;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none; z-index: 999;
         }
-
-        /* UI */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; text-align: center;
+        .border {
+            width: 70%; height: 50%; border: 2px solid rgba(0, 255, 0, 0.5);
+            border-radius: 20px; box-shadow: 0 0 20px green;
         }
-
-        /* Strelka (Ekran markazida turadi) */
-        #arrow {
-            width: 150px; height: 150px;
-            filter: drop-shadow(0 0 10px #00ff00);
-            transition: transform 0.5s ease;
-        }
-
-        #distance-box {
-            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px;
-            margin-top: 20px; font-size: 24px; font-weight: bold; border: 2px solid lime;
-        }
-
-        #instruction {
-            position: fixed; top: 20px; width: 80%; background: rgba(0,0,0,0.5);
-            padding: 10px; border-radius: 10px; color: yellow;
-        }
-
-        button {
-            padding: 15px 40px; font-size: 18px; background: #007bff; color: white;
-            border: none; border-radius: 30px; margin-top: 50px;
-            box-shadow: 0 0 20px blue;
+        #text-hint {
+            position: fixed; bottom: 50px; width: 100%; text-align: center;
+            color: yellow; font-size: 20px; font-weight: bold; 
+            text-shadow: 2px 2px 4px black; z-index: 1000; font-family: sans-serif;
         }
     </style>
 </head>
 <body>
 
-    <video id="bg-video" autoplay playsinline muted></video>
+    <div id="scanner-ui"><div class="border"></div></div>
+    <div id="text-hint">Rasmni skanerlang...</div>
 
-    <div id="ui-layer">
-        <div id="instruction">Telefonni tik ushlang va yuring</div>
-        
-        <img id="arrow" src="https://upload.wikimedia.org/wikipedia/commons/7/71/Arrow_icon.svg" style="filter: invert(1) sepia(1) saturate(5) hue-rotate(90deg);">
-        
-        <div id="distance-box">
-            <span id="meters">20.0</span> metr
-        </div>
+    <a-scene mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.2/examples/image-tracking/assets/card-example/card.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
+             color-space="sRGB" 
+             renderer="colorManagement: true, physicallyCorrectLights" 
+             vr-mode-ui="enabled: false" 
+             device-orientation-permission-ui="enabled: false">
 
-        <button id="start-btn" onclick="startApp()">BOSHLASH</button>
-    </div>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-entity mindar-image-target="targetIndex: 0" id="marker-root">
+            
+            <a-plane color="blue" opacity="0.3" height="0.5" width="0.5"></a-plane>
+            <a-text value="START" align="center" color="white"></a-text>
+
+            <a-entity id="arrow-path"></a-entity>
+
+        </a-entity>
+    </a-scene>
 
     <script>
-        let distance = 20.0; // 20 metr masofa
-        let stepCount = 0;
-        let lastAccY = 0;
-        let isWalking = false;
-        let currentLeg = 1; // 1-etap (to'g'riga), 2-etap (o'ngga)
+        // Sahnani olamiz
+        const arrowPath = document.getElementById('arrow-path');
 
-        async function startApp() {
-            document.getElementById('start-btn').style.display = 'none';
+        // 30 metrga yetadigan strelkalar chizamiz
+        // O'ng tomon = X o'qi (Positive X)
+        
+        function generateArrows() {
+            for (let i = 1; i <= 20; i++) { // 20 ta strelka
+                
+                let distance = i * 1.5; // Har 1.5 metrda bitta strelka
+                
+                // Konus (Strelka uchi)
+                let cone = document.createElement('a-cone');
+                
+                // Pozitsiya: X bo'yicha o'ngga suramiz
+                // Agar rasmni devorga ilgan bo'lsangiz: x=distance, y=0, z=0
+                // Agar rasmni polga qo'ygan bo'lsangiz: koordinatalar o'zgaradi.
+                // Hozir devorga ilingan rasm deb hisoblaymiz va o'ngga chizamiz:
+                
+                cone.setAttribute('position', `${distance} 0 0`);
+                cone.setAttribute('rotation', '0 0 -90'); // Uchini o'ngga qaratish
+                cone.setAttribute('radius-bottom', '0.15');
+                cone.setAttribute('height', '0.4');
+                cone.setAttribute('color', 'yellow');
+                cone.setAttribute('opacity', '0.9');
 
-            // 1. Kamerani yoqish
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                document.getElementById('bg-video').srcObject = stream;
-            } catch (e) { alert("Kamera xatosi!"); }
+                // Animatsiya (Oqib turish effekti)
+                // Har bir strelka ketma-ket yonib o'chadi
+                cone.setAttribute('animation', `property: opacity; from: 0.3; to: 1; dur: 1000; dir: alternate; loop: true; delay: ${i * 100}`);
 
-            // 2. Sensorlarga ruxsat (iOS 13+)
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(response => {
-                    if (response == 'granted') {
-                        window.addEventListener('devicemotion', handleMotion);
-                        // window.addEventListener('deviceorientation', handleOrientation); // Kompas kerak bo'lsa
-                    }
-                });
-            } else {
-                window.addEventListener('devicemotion', handleMotion);
+                arrowPath.appendChild(cone);
             }
-            
-            isWalking = true;
+
+            // Oxiriga "XIRURGIYA" deb yozamiz
+            let text = document.createElement('a-text');
+            text.setAttribute('value', 'XIRURGIYA');
+            text.setAttribute('position', '31 0 0');
+            text.setAttribute('align', 'center');
+            text.setAttribute('scale', '3 3 3');
+            text.setAttribute('color', '#00ff00');
+            arrowPath.appendChild(text);
         }
 
-        function handleMotion(event) {
-            if (!isWalking) return;
+        // Sahna yuklanganda chizishni boshlaymiz
+        document.querySelector('a-scene').addEventListener('loaded', generateArrows);
 
-            // Qadamni aniqlash logikasi (Oddiy akselerometr tebranishi)
-            // Telefon cho'ntakda yoki qo'lda silkinganda Y o'qi o'zgaradi
-            let acc = event.accelerationIncludingGravity;
-            let accY = acc.y; // Tik turganda Y o'qi o'zgarishi
+        // Marker topilganda matnni o'zgartirish
+        const marker = document.getElementById('marker-root');
+        marker.addEventListener("targetFound", event => {
+            document.getElementById('text-hint').innerText = "O'ngga qarang! -> -> ->";
+            document.getElementById('text-hint').style.color = "#00ff00";
+            document.querySelector('.border').style.borderColor = "#00ff00";
+        });
+        marker.addEventListener("targetLost", event => {
+            document.getElementById('text-hint').innerText = "Rasmni skanerlang...";
+            document.getElementById('text-hint').style.color = "yellow";
+            document.querySelector('.border').style.borderColor = "yellow";
+        });
 
-            // Silkinish kuchi (Threshold)
-            if (Math.abs(accY - lastAccY) > 2) { 
-                registerStep();
-            }
-            lastAccY = accY;
-        }
-
-        // Qadamni hisoblash (Debounce - bitta silkinishni ko'p marta sanamasligi uchun)
-        let lastStepTime = 0;
-        function registerStep() {
-            let now = Date.now();
-            if (now - lastStepTime > 500) { // Har yarim sekundda maksimum 1 qadam
-                lastStepTime = now;
-                
-                // Odam o'rtacha 0.7 metr yuradi
-                distance -= 0.7; 
-                
-                if (distance < 0) distance = 0;
-                
-                updateUI();
-            }
-        }
-
-        function updateUI() {
-            // Metrni yangilash
-            document.getElementById('meters').innerText = distance.toFixed(1);
-
-            // LOGIKA: 20 metr tugasa nima bo'ladi?
-            if (distance <= 0 && currentLeg === 1) {
-                // 1-etap tugadi, 2-etapga o'tamiz
-                currentLeg = 2;
-                distance = 15.0; // Keyingi koridor 15 metr
-                
-                // STRELKANI BURISH
-                document.getElementById('arrow').style.transform = "rotate(90deg)"; // O'ngga burildi
-                document.getElementById('instruction').innerText = "O'NGGA BURILING ->";
-                document.getElementById('instruction').style.background = "red";
-                
-                // Ovozli xabar (ixtiyoriy)
-                // navigator.vibrate(200); 
-            }
-            else if (distance <= 0 && currentLeg === 2) {
-                isWalking = false;
-                document.getElementById('instruction').innerText = "MANZILGA YETDINGIZ! 🏁";
-                document.getElementById('arrow').style.display = 'none';
-                document.getElementById('distance-box').style.background = "green";
-                document.getElementById('meters').innerText = "0";
-            }
-        }
     </script>
 </body>
 </html>
