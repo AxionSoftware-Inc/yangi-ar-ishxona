@@ -1,38 +1,36 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>AR Yo'l</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  </head>
-  
-  <body style="margin: 0; overflow: hidden;">
-    
-    <a-scene 
-      embedded 
-      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" 
-      vr-mode-ui="enabled: false">
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Setup Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+</head>
+<body>
 
-      <a-entity rotation="0 -60 0"> <a-entity position="0 0 -4">
-            <a-cylinder rotation="90 0 0" radius="0.05" height="2" color="red"></a-cylinder>
-            <a-cone position="0 1.2 0" radius-bottom="0.2" height="0.5" color="red"></a-cone>
+    <div id="ui-overlay">
+        <h1 id="status">Model yuklanmoqda...</h1>
+        <p>Atrofga qarang 🔄</p>
+    </div>
+
+    <video id="webcam" autoplay playsinline muted></video>
+
+    <a-scene vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
+        
+        <a-entity id="camera-rig">
+            <a-camera id="main-camera" look-controls="enabled: true;" position="0 1.6 0"></a-camera>
         </a-entity>
 
-        <a-entity position="0 0 -7">
-            <a-cylinder rotation="90 0 0" radius="0.05" height="2" color="red"></a-cylinder>
-            <a-cone position="0 1.2 0" radius-bottom="0.2" height="0.5" color="red"></a-cone>
+        <a-entity id="target-model">
+            <a-box id="test-box" material="color: red;" scale="0.5 0.5 0.5" 
+                   animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+            </a-box>
+            <a-text value="MANZIL" align="center" position="0 0.6 0" color="white" scale="1.5 1.5 1.5"></a-text>
         </a-entity>
 
-        <a-entity position="0 0 -10">
-            <a-cylinder rotation="90 0 0" radius="0.05" height="2" color="red"></a-cylinder>
-            <a-cone position="0 1.2 0" radius-bottom="0.2" height="0.5" color="red"></a-cone>
-        </a-entity>
-
-      </a-entity>
-
-      <a-entity camera look-controls></a-entity>
-      
     </a-scene>
-  </body>
+
+    <script src="app.js"></script>
+</body>
 </html>
