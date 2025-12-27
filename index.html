@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>AR Left Path</title>
+    <title>AR Faqat Strelkalar</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; }
@@ -10,17 +10,14 @@
             position: fixed; top: 15px; width: 100%; text-align: center;
             z-index: 10; color: white; font-family: sans-serif;
         }
-        .btn {
-            background: #007bff; color: white; border: none; padding: 10px 20px;
-            border-radius: 5px; font-size: 16px; margin-top: 10px; cursor: pointer;
-        }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <div style="background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; display: inline-block;">
-            <b>Navigatsiya:</b> Chapga buriling! ⬅️
+        <div style="background: rgba(0,255,100,0.4); padding: 10px; border-radius: 10px; display: inline-block; border: 1px solid #00ff66;">
+            <b>Navigatsiya:</b> Chapga buriling! ⬅️ <br>
+            <small>(Agar hali ham kub ko'rinsa, sahifani yangilang)</small>
         </div>
     </div>
 
@@ -30,36 +27,33 @@
         <a-entity camera look-controls position="0 1.6 0"></a-entity>
 
         <a-entity id="arrow-path" position="0 0.5 0"></a-entity>
-
     </a-scene>
 
     <script>
-        // 1. Kamerani yoqish
+        // 1. Kamera
         const v = document.getElementById('v');
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
             .then(s => { v.srcObject = s; })
-            .catch(e => { alert("Kamera ruxsati: " + e); });
+            .catch(e => { alert("Kamera xatosi: " + e); });
 
-        // 2. STRELKALAR ARRAYINI YASASH
+        // 2. STRELKALAR ARRAYINI YASASH (KUBSIZ)
         const pathGroup = document.getElementById('arrow-path');
         
-        // 5 metrlik yo'l (har 1 metrda bitta strelka)
         for (let i = 1; i <= 5; i++) {
             const arrow = document.createElement('a-entity');
             
-            // Koordinata: X o'qi bo'yicha chapga (minus) ketaveradi
-            // position="-i 0 0" (X = -1, -2, -3...)
+            // X o'qi bo'yicha har 1 metrda chapga ketadi (-1, -2, -3...)
             arrow.setAttribute('position', `${-i} 0 0`);
             
-            // Strelkaning o'zi (Konus shaklida)
-            // rotation="0 0 90" strelkani chapga qaratadi
+            // Konus (Strelka uchi) va matn
             arrow.innerHTML = `
                 <a-cone radius-bottom="0.1" radius-top="0" height="0.4" color="#00ff66" rotation="0 0 90"></a-cone>
-                <a-text value="${i}m" position="0 0.4 0" align="center" scale="1.5 1.5 1.5" color="white"></a-text>
+                <a-text value="${i}m" position="0 0.4 0" align="center" scale="2 2 2" color="white"></a-text>
             `;
             
             pathGroup.appendChild(arrow);
         }
+        console.log("Strelkalar yuklandi, kub o'chirildi.");
     </script>
 </body>
 </html>
